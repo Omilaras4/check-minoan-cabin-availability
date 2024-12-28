@@ -1,4 +1,5 @@
 import requests
+from bs4 import BeautifulSoup
 import time
 from datetime import datetime
 import smtplib
@@ -6,6 +7,7 @@ from email.mime.text import MIMEText
 import logging
 import os
 import json
+
 
 # Setup logging
 logging.basicConfig(
@@ -38,6 +40,14 @@ class MinoanSession:
             
             response = self.session.get(initial_url)
             logging.info(f"Initial page status: {response.status_code}")
+
+            soup = BeautifulSoup(response.text, 'html.parser')
+        
+            # Look for CSRF token in meta tags or form fields
+            csrf_token = soup.find('meta', {'name': 'csrf-token'})
+            if csrf_token:
+                headers['X-CSRF-TOKEN'] = csrf_token.get('content')
+                logging.info(f"X-CSRF-TOKEN: csrf_token.get('content')")
             
             if response.status_code == 200:
                 # Now visit the step 1 page
