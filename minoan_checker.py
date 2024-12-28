@@ -16,32 +16,36 @@ logging.basicConfig(
 def check_availability(date, passengers):
     try:
         # API endpoint
-        #url = "https://www.minoan.gr/booking"
-        url = "https://www.minoan.gr/booking?from=PIR&to=HER&date=2025-01-06&arrival=&passengers=3&pets=0&step=1"
+        url = "https://www.minoan.gr/booking-api/trips"
+
         
         # Parameters for the request
         params = {
             "from": "PIR",
             "to": "HER",
-            "date": date,
-            "passengers": passengers
-            #"lang": "el"
+            "date": date,  # Changed from departureDate to date
+            "arrival": "",
+            "passengers": passengers,  # Changed from numPass to passengers
+            "pets": "0",
+            "step": "2",
+            "vehicles": "0"
         }
         
         # Headers to mimic a browser request
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'application/json',
-            'Referer': f'https://www.minoan.gr/booking?from=PIR&to=HER&date={date}&passengers={passengers}&pets=0&step=2&vehicles=0',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Referer': 'https://www.minoan.gr/booking',
             'Origin': 'https://www.minoan.gr',
-            'Accept-Language': 'en-US,en;q=0.9'
+            'Connection': 'keep-alive'
         }
 
         # Make the request
         logging.info(f"Making request to URL: {url}")
         logging.info(f"With parameters: {params}")
-        #response = requests.get(url, params=params, headers=headers)
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, params=params, headers=headers)
         
         # Print response status and headers
         logging.info(f"Response status code: {response.status_code}")
@@ -93,15 +97,15 @@ def check_availability(date, passengers):
 def send_notification(available_cabins, departure_time, date):
     try:
         # Get email credentials from GitHub secrets
-        #email_sender = os.environ['EMAIL_SENDER']
-        #email_password = os.environ['EMAIL_PASSWORD']
-        #email_recipient = os.environ['EMAIL_RECIPIENT']
-        #passengers = int(os.environ['PASSENGERS'])
+        email_sender = os.environ['EMAIL_SENDER']
+        email_password = os.environ['EMAIL_PASSWORD']
+        email_recipient = os.environ['EMAIL_RECIPIENT']
+        passengers = int(os.environ['PASSENGERS'])
 
-        email_sender = "manos.kalaitzakis@gmail.com"
-        email_password = "qkfo uknj btuz gdqf"  # Gmail App Password
-        email_recipient = "mkalaitz@ics.forth.gr"
-        passengers = 3
+        #email_sender = "manos.kalaitzakis@gmail.com"
+        #email_password = "qkfo uknj btuz gdqf"  # Gmail App Password
+        #email_recipient = "mkalaitz@ics.forth.gr"
+        #passengers = 3
         
         # Create a detailed message
         message = f"Cabins have become available for your desired date: {date}\n"
