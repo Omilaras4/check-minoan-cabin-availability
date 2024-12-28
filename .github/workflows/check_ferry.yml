@@ -29,4 +29,4 @@ jobs:
         EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         SEARCH_DATE: ${{ secrets.SEARCH_DATE }}
         PASSENGERS: ${{ secrets.PASSENGERS }}
-      run: python ferry_checker.py
+      run: python minoan_checker.py
