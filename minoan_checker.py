@@ -16,8 +16,7 @@ logging.basicConfig(
 def check_availability(date, passengers):
     try:
         # API endpoint
-        #url = "https://www.minoan.gr/api/v2/trips"
-        url = "https://www.minoan.gr/booking"
+        url = "https://www.minoan.gr/api/v2/trips"
         
         # Parameters for the request
         params = {
@@ -30,16 +29,28 @@ def check_availability(date, passengers):
         
         # Headers to mimic a browser request
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'Accept': 'application/json',
-            'Referer': f'https://www.minoan.gr/booking?from=PIR&to=HER&date={date}&passengers={passengers}&pets=0&step=1&vehicles=0'
+            'Referer': f'https://www.minoan.gr/booking?from=PIR&to=HER&date={date}&passengers={passengers}&pets=0&step=2&vehicles=0',
+            'Origin': 'https://www.minoan.gr',
+            'Accept-Language': 'en-US,en;q=0.9'
         }
 
         # Make the request
+        logging.info(f"Making request to URL: {url}")
+        logging.info(f"With parameters: {params}")
         response = requests.get(url, params=params, headers=headers)
+        
+        # Print response status and headers
+        logging.info(f"Response status code: {response.status_code}")
+        logging.info(f"Response headers: {dict(response.headers)}")
+        
+        # Print response content
+        logging.info(f"Response content: {response.text[:500]}")  # Print first 500 chars of response
         
         if response.status_code == 200:
             data = response.json()
+            logging.info("Successfully parsed JSON response")
             
             # Check if there are any trips
             if data and len(data) > 0 and 'trips' in data[0]:
@@ -49,7 +60,7 @@ def check_availability(date, passengers):
                 available_cabins = []
                 if 'accommodations' in trip and 'passenger' in trip['accommodations']:
                     for acc in trip['accommodations']['passenger']:
-                        if acc['code'] in ['AB3', 'A3', 'D'] and acc['wholeBerthAvailability'] > 0:
+                        if acc['code'] in ['AB3', 'A3','D'] and acc['wholeBerthAvailability'] > 0:
                             available_cabins.append({
                                 'type': acc['name'],
                                 'availability': acc['wholeBerthAvailability'],
@@ -65,9 +76,14 @@ def check_availability(date, passengers):
             
         else:
             logging.error(f"Error in API request: {response.status_code}")
+            logging.error(f"Error response: {response.text}")
             
         return False
 
+    except json.JSONDecodeError as e:
+        logging.error(f"JSON Decode Error: {str(e)}")
+        logging.error(f"Response content that caused error: {response.text}")
+        return False
     except Exception as e:
         logging.error(f"Error checking availability: {str(e)}")
         return False
@@ -108,6 +124,10 @@ def send_notification(available_cabins, departure_time, date):
         logging.error(f"Error sending notification: {str(e)}")
 
 if __name__ == "__main__":
+    logging.info("Script started")
+    logging.info(f"Using date: {os.environ['SEARCH_DATE']}")
+    logging.info(f"Using passengers: {os.environ['PASSENGERS']}")
+    
     date = os.environ['SEARCH_DATE']
     passengers = int(os.environ['PASSENGERS'])
     check_availability(date, passengers)
