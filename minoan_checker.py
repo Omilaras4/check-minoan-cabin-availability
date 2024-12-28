@@ -16,15 +16,15 @@ logging.basicConfig(
 def check_availability(date, passengers):
     try:
         # API endpoint
-        url = "https://www.minoan.gr/api/v2/trips"
+        url = "https://www.minoan.gr/booking"
         
         # Parameters for the request
         params = {
             "from": "PIR",
             "to": "HER",
-            "departureDate": date,
-            "numPass": passengers,
-            "lang": "el"
+            "date": date,
+            "passengers": passengers
+            #"lang": "el"
         }
         
         # Headers to mimic a browser request
