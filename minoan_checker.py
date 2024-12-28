@@ -13,132 +13,162 @@ logging.basicConfig(
     format='%(asctime)s - %(message)s'
 )
 
-def check_availability(date, passengers):
-    try:
-        # API endpoint
-        url = "https://www.minoan.gr/booking-api/trips"
-
-        
-        # Parameters for the request
-        params = {
-            "from": "PIR",
-            "to": "HER",
-            "date": date,  # Changed from departureDate to date
-            "arrival": "",
-            "passengers": passengers,  # Changed from numPass to passengers
-            "pets": "0",
-            "step": "2",
-            "vehicles": "0"
-        }
-        
-        # Headers to mimic a browser request
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+class MinoanSession:
+    def __init__(self):
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'en-US,en;q=0.9',
             'Accept-Encoding': 'gzip, deflate, br',
-            'Referer': 'https://www.minoan.gr/booking',
-            'Origin': 'https://www.minoan.gr',
-            'Connection': 'keep-alive'
-        }
+            'Connection': 'keep-alive',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-origin',
+            'Pragma': 'no-cache',
+            'Cache-Control': 'no-cache'
+        })
 
-        # Make the request
-        logging.info(f"Making request to URL: {url}")
-        logging.info(f"With parameters: {params}")
-        response = requests.get(url, params=params, headers=headers)
-        
-        # Print response status and headers
-        logging.info(f"Response status code: {response.status_code}")
-        logging.info(f"Response headers: {dict(response.headers)}")
-        
-        # Print response content
-        logging.info(f"Response content: {response.text[:500]}")  # Print first 500 chars of response
-        
-        if response.status_code == 200:
-            data = response.json()
-            logging.info("Successfully parsed JSON response")
+    def init_session(self):
+        """Initialize session by visiting the main booking page first"""
+        try:
+            # First, visit the main booking page
+            initial_url = "https://www.minoan.gr/booking"
+            logging.info(f"Visiting initial page: {initial_url}")
             
-            # Check if there are any trips
-            if data and len(data) > 0 and 'trips' in data[0]:
-                trip = data[0]['trips'][0]
-                
-                # Check cabin availability
-                available_cabins = []
-                if 'accommodations' in trip and 'passenger' in trip['accommodations']:
-                    for acc in trip['accommodations']['passenger']:
-                        if acc['code'] in ['AB3', 'A3','D'] and acc['wholeBerthAvailability'] > 0:
-                            available_cabins.append({
-                                'type': acc['name'],
-                                'availability': acc['wholeBerthAvailability'],
-                                'price': acc['price']
-                            })
-                
-                if available_cabins:
-                    send_notification(available_cabins, trip['departureDateTime'], date)
-                    logging.info(f"Cabins found available for date: {date}")
-                    return True
-                
-                logging.info(f"No cabins available for date: {date}")
+            response = self.session.get(initial_url)
+            logging.info(f"Initial page status: {response.status_code}")
             
-        else:
-            logging.error(f"Error in API request: {response.status_code}")
-            logging.error(f"Error response: {response.text}")
+            if response.status_code == 200:
+                # Now visit the step 1 page
+                step1_url = "https://www.minoan.gr/booking"
+                params = {
+                    "from": "PIR",
+                    "to": "HER",
+                    "date": os.environ['SEARCH_DATE'],
+                    "arrival": "",
+                    "passengers": os.environ['PASSENGERS'],
+                    "pets": "0",
+                    "step": "1"
+                }
+                
+                logging.info(f"Visiting step 1 page with params: {params}")
+                response = self.session.get(step1_url, params=params)
+                logging.info(f"Step 1 page status: {response.status_code}")
+                
+                return True
+            return False
             
-        return False
+        except Exception as e:
+            logging.error(f"Error initializing session: {str(e)}")
+            return False
 
-    except json.JSONDecodeError as e:
-        logging.error(f"JSON Decode Error: {str(e)}")
-        logging.error(f"Response content that caused error: {response.text}")
-        return False
-    except Exception as e:
-        logging.error(f"Error checking availability: {str(e)}")
-        return False
+    def check_availability(self):
+        """Check cabin availability"""
+        try:
+            # Now make the actual availability check
+            url = "https://www.minoan.gr/booking-api/trips"
+            
+            params = {
+                "from": "PIR",
+                "to": "HER",
+                "date": os.environ['SEARCH_DATE'],
+                "arrival": "",
+                "passengers": os.environ['PASSENGERS'],
+                "pets": "0",
+                "step": "2",
+                "vehicles": "0"
+            }
 
-def send_notification(available_cabins, departure_time, date):
-    try:
-        # Get email credentials from GitHub secrets
-        email_sender = os.environ['EMAIL_SENDER']
-        email_password = os.environ['EMAIL_PASSWORD']
-        email_recipient = os.environ['EMAIL_RECIPIENT']
-        passengers = int(os.environ['PASSENGERS'])
+            # Update referer for this specific request
+            self.session.headers.update({
+                'Referer': f"https://www.minoan.gr/booking?from=PIR&to=HER&date={params['date']}&arrival=&passengers={params['passengers']}&pets=0&step=1"
+            })
+            
+            logging.info(f"Checking availability with params: {params}")
+            response = self.session.get(url, params=params)
+            
+            logging.info(f"Availability check status: {response.status_code}")
+            logging.info(f"Response headers: {dict(response.headers)}")
+            logging.info(f"Response content preview: {response.text[:500]}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                if data and len(data) > 0 and 'trips' in data[0]:
+                    trip = data[0]['trips'][0]
+                    
+                    available_cabins = []
+                    if 'accommodations' in trip and 'passenger' in trip['accommodations']:
+                        for acc in trip['accommodations']['passenger']:
+                            if acc['code'] in ['AB3', 'A3'] and acc['wholeBerthAvailability'] > 0:
+                                available_cabins.append({
+                                    'type': acc['name'],
+                                    'availability': acc['wholeBerthAvailability'],
+                                    'price': acc['price']
+                                })
+                    
+                    if available_cabins:
+                        self.send_notification(available_cabins, trip['departureDateTime'])
+                        logging.info(f"Cabins found available for date: {params['date']}")
+                        return True
+                    
+                    logging.info(f"No cabins available for date: {params['date']}")
+                
+            else:
+                logging.error(f"Error response: {response.text}")
+                
+            return False
 
-        #email_sender = "manos.kalaitzakis@gmail.com"
-        #email_password = "qkfo uknj btuz gdqf"  # Gmail App Password
-        #email_recipient = "mkalaitz@ics.forth.gr"
-        #passengers = 3
-        
-        # Create a detailed message
-        message = f"Cabins have become available for your desired date: {date}\n"
-        message += f"Departure time: {departure_time}\n\n"
-        message += "Available cabins:\n"
-        
-        for cabin in available_cabins:
-            message += f"- {cabin['type']}\n"
-            message += f"  Price: €{cabin['price']}\n"
-            message += f"  Available berths: {cabin['availability']}\n\n"
-        
-        message += f"\nBook now at: https://www.minoan.gr/booking?from=PIR&to=HER&date={date}"
-        message += f"&passengers={passengers}&pets=0&step=2&vehicles=0"
-        
-        msg = MIMEText(message)
-        msg['Subject'] = "Minoan Lines - Cabin Available!"
-        msg['From'] = email_sender
-        msg['To'] = email_recipient
-        
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp_server:
-            smtp_server.login(email_sender, email_password)
-            smtp_server.sendmail(email_sender, email_recipient, msg.as_string())
-        
-        logging.info("Notification email sent successfully")
-        
-    except Exception as e:
-        logging.error(f"Error sending notification: {str(e)}")
+        except json.JSONDecodeError as e:
+            logging.error(f"JSON Decode Error: {str(e)}")
+            logging.error(f"Response content that caused error: {response.text}")
+            return False
+        except Exception as e:
+            logging.error(f"Error checking availability: {str(e)}")
+            return False
+
+    def send_notification(self, available_cabins, departure_time):
+        try:
+            email_sender = os.environ['EMAIL_SENDER']
+            email_password = os.environ['EMAIL_PASSWORD']
+            email_recipient = os.environ['EMAIL_RECIPIENT']
+            search_date = os.environ['SEARCH_DATE']
+            passengers = os.environ['PASSENGERS']
+
+            message = f"Cabins have become available for your desired date: {search_date}\n"
+            message += f"Departure time: {departure_time}\n\n"
+            message += "Available cabins:\n"
+            
+            for cabin in available_cabins:
+                message += f"- {cabin['type']}\n"
+                message += f"  Price: €{cabin['price']}\n"
+                message += f"  Available berths: {cabin['availability']}\n\n"
+            
+            message += f"\nBook now at: https://www.minoan.gr/booking?from=PIR&to=HER&date={search_date}"
+            message += f"&passengers={passengers}&pets=0&step=2&vehicles=0"
+            
+            msg = MIMEText(message)
+            msg['Subject'] = "Minoan Lines - Cabin Available!"
+            msg['From'] = email_sender
+            msg['To'] = email_recipient
+            
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp_server:
+                smtp_server.login(email_sender, email_password)
+                smtp_server.sendmail(email_sender, email_recipient, msg.as_string())
+            
+            logging.info("Notification email sent successfully")
+            
+        except Exception as e:
+            logging.error(f"Error sending notification: {str(e)}")
 
 if __name__ == "__main__":
     logging.info("Script started")
     logging.info(f"Using date: {os.environ['SEARCH_DATE']}")
     logging.info(f"Using passengers: {os.environ['PASSENGERS']}")
     
-    date = os.environ['SEARCH_DATE']
-    passengers = int(os.environ['PASSENGERS'])
-    check_availability(date, passengers)
+    session = MinoanSession()
+    if session.init_session():
+        session.check_availability()
+    else:
+        logging.error("Failed to initialize session")
