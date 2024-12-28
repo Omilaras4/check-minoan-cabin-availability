@@ -16,7 +16,8 @@ logging.basicConfig(
 def check_availability(date, passengers):
     try:
         # API endpoint
-        url = "https://www.minoan.gr/api/v2/trips"
+        #url = "https://www.minoan.gr/api/v2/trips"
+        url = "https://www.minoan.gr/booking"
         
         # Parameters for the request
         params = {
@@ -31,7 +32,7 @@ def check_availability(date, passengers):
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             'Accept': 'application/json',
-            'Referer': f'https://www.minoan.gr/booking?from=PIR&to=HER&date={date}&passengers={passengers}&pets=0&step=2&vehicles=0'
+            'Referer': f'https://www.minoan.gr/booking?from=PIR&to=HER&date={date}&passengers={passengers}&pets=0&step=1&vehicles=0'
         }
 
         # Make the request
@@ -48,7 +49,7 @@ def check_availability(date, passengers):
                 available_cabins = []
                 if 'accommodations' in trip and 'passenger' in trip['accommodations']:
                     for acc in trip['accommodations']['passenger']:
-                        if acc['code'] in ['AB3', 'A3'] and acc['wholeBerthAvailability'] > 0:
+                        if acc['code'] in ['AB3', 'A3', 'D'] and acc['wholeBerthAvailability'] > 0:
                             available_cabins.append({
                                 'type': acc['name'],
                                 'availability': acc['wholeBerthAvailability'],
