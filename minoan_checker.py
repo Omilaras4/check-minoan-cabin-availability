@@ -16,7 +16,8 @@ logging.basicConfig(
 def check_availability(date, passengers):
     try:
         # API endpoint
-        url = "https://www.minoan.gr/booking"
+        #url = "https://www.minoan.gr/booking"
+        url = "https://www.minoan.gr/booking?from=PIR&to=HER&date=2025-01-06&arrival=&passengers=3&pets=0&step=1"
         
         # Parameters for the request
         params = {
@@ -39,7 +40,8 @@ def check_availability(date, passengers):
         # Make the request
         logging.info(f"Making request to URL: {url}")
         logging.info(f"With parameters: {params}")
-        response = requests.get(url, params=params, headers=headers)
+        #response = requests.get(url, params=params, headers=headers)
+        response = requests.get(url, headers=headers)
         
         # Print response status and headers
         logging.info(f"Response status code: {response.status_code}")
@@ -91,11 +93,16 @@ def check_availability(date, passengers):
 def send_notification(available_cabins, departure_time, date):
     try:
         # Get email credentials from GitHub secrets
-        email_sender = os.environ['EMAIL_SENDER']
-        email_password = os.environ['EMAIL_PASSWORD']
-        email_recipient = os.environ['EMAIL_RECIPIENT']
-        passengers = int(os.environ['PASSENGERS'])
+        #email_sender = os.environ['EMAIL_SENDER']
+        #email_password = os.environ['EMAIL_PASSWORD']
+        #email_recipient = os.environ['EMAIL_RECIPIENT']
+        #passengers = int(os.environ['PASSENGERS'])
 
+        email_sender = "manos.kalaitzakis@gmail.com"
+        email_password = "qkfo uknj btuz gdqf"  # Gmail App Password
+        email_recipient = "mkalaitz@ics.forth.gr"
+        passengers = 3
+        
         # Create a detailed message
         message = f"Cabins have become available for your desired date: {date}\n"
         message += f"Departure time: {departure_time}\n\n"
